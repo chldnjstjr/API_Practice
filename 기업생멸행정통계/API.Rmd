@@ -1,0 +1,72 @@
+---
+title: "기업생멸행정통계"
+author: "WS"
+date: "2022-09-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 들어가기에 앞서
+
+# Setting
+
+공공데이터 포털에서 키를 발급받아 데이터를 가져오는 과정은 [블로그](https://mrkevinna.github.io/R-Crawler-6-%EB%B6%80%EB%A1%9D-%ED%86%B5%EA%B3%84%EC%B2%AD/)의 내용을 상당수 참고하였습니다.
+
+```{r library}
+library(pacman)
+p_load(httr, rvest, dplyr, stringr, magrittr, jsonlite)
+```
+
+URL과 생성된 key 객체를 지정해주고, HTTP Request를 실행하여 Reponse를 받는다. httr 패키지의 Get() 함수 사용.
+
+```{r URL}
+
+userStatsId <- 'wonseokchoi/101/DT_1BD1007/2/1/20220915151519'
+
+URL <- 'https://kosis.kr/openapi/statisticsData.do?method=getList&apiKey=ODhlYjZhZmRkNmRkZWIxMDdkZTFjYjg0OGEwZDViMzE=&format=json&jsonVD=Y&userStatsId=wonseokchoi/101/DT_1BD1007/2/1/20220915151519&prdSe=Y&newEstPrdCnt=1'
+
+mekey <- 'ODhlYjZhZmRkNmRkZWIxMDdkZTFjYjg0OGEwZDViMzE='
+
+resp <- GET(url = URL)
+
+status_code(x=resp)
+
+# JSON 형태의 response를 데이터프레임으로 저장
+df <- fromJSON(txt = resp %>% as.character())
+
+# 통계표를 미리보기
+head(x = df, n = 10L)
+```
+
+테이블이 너무 복잡하게 나온다.
+
+```{r}
+str(df)
+
+df$DT <- as.numeric(df$DT)
+names(df)
+
+#산업별&지역별 활동 중인 기업 수
+df_ind_reg_count <- df %>% 
+  group_by(ITM_NM, C1_NM, C2_NM) %>%
+  summarise(DT) %>%
+  filter(ITM_NM == '활동'&!C1_NM == '전체' &!C2_NM == '전국') %>%
+  arrange(C2_NM, desc(DT))
+
+#산업별 활동 중인 기업 수
+df_ind_count <- df %>% 
+  group_by(ITM_NM, C1_NM, C2_NM) %>%
+  summarise(DT) %>%
+  filter(ITM_NM == '활동'&!C1_NM == '전체'&C2_NM == '전국') %>%
+  arrange(C2_NM, desc(DT))
+```
+
+```{r}
+mosaicplot(~C1_NM+C2_NM, data = df_ind_reg_count, color=TRUE,            
+            main ="산업별 지역별 황동 중 기업 분포")
+```
+
+
